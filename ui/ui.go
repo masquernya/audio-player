@@ -33,6 +33,12 @@ func playAudioSync(a *audio.Audio, s *LayoutMain, bar fyne.CanvasObject, pos flo
 	}
 }
 
+func pauseAudioSync(a *audio.Audio, s *LayoutMain, bar fyne.CanvasObject) float32 {
+	s.Pause(bar)
+	a.Stop()
+	return s.PlaybackPercent
+}
+
 func New() *UI {
 	u := &UI{}
 	return u
@@ -103,12 +109,26 @@ func (u *UI) Run(audioFile string) error {
 		playAudioSync(u.a, l, cursor, 0, u.a.Duration())
 	})
 
+	pausePosition := float32(0)
+	var pauseButton *widget.Button
+	pauseButton = widget.NewButton("Pause", func() {
+		if pausePosition == 0 {
+			pauseAudioSync(u.a, l, cursor)
+			pausePosition = l.PlaybackPercent * u.a.Duration()
+			pauseButton.SetText("Resume")
+		} else {
+			playAudioSync(u.a, l, cursor, pausePosition, u.a.Duration())
+			pausePosition = 0
+			pauseButton.SetText("Pause")
+		}
+	})
+
 	closeButton := widget.NewButton("Close", func() {
 		u.a.Stop()
 		u.app.Quit()
 	})
 
-	ct = container.New(l, canvasImg, cursorPositioner, replayButton, closeButton, cursor)
+	ct = container.New(l, canvasImg, cursorPositioner, cursor, replayButton, pauseButton, closeButton)
 
 	gtime.End("ui.Run.CreateElements") // 1ms
 
