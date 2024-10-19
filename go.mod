@@ -2,7 +2,11 @@ module audio-player
 
 go 1.21
 
-require fyne.io/fyne/v2 v2.5.1
+require (
+	fyne.io/fyne/v2 v2.5.1
+	github.com/google/uuid v1.6.0
+	golang.org/x/crypto v0.23.0
+)
 
 require (
 	fyne.io/systray v1.11.0 // indirect
@@ -18,7 +22,6 @@ require (
 	github.com/go-text/render v0.1.1-0.20240418202334-dd62631dae9b // indirect
 	github.com/go-text/typesetting v0.1.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/jeandeaual/go-locale v0.0.0-20240223122105-ce5225dcaa49 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect

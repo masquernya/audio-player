@@ -3,3 +3,6 @@
 .vscode
 audio-player
 *.exe
+port
+encryption-key
+cache

@@ -1,56 +1,36 @@
 package main
 
 import (
+	"audio-player/gtime"
+	"audio-player/server"
 	"audio-player/ui"
-	"fmt"
+	"audio-player/visu"
 	"log"
-	"net"
-	"net/http"
-	"net/rpc"
 	"os"
 )
 
-type RpcServer struct {
-	u *ui.UI
-}
-
-func (r *RpcServer) PlayAudio(audioFile *string, reply *int) error {
-	fmt.Println("playing audio", audioFile)
-	r.u.Run(*audioFile)
-	return nil
-}
-
 func main() {
+	gtime.Start("main")
 	audioFile := os.Args[1]
-	fmt.Println("stating with", audioFile)
-	portStr := "19837"
 
-	client, err := rpc.DialHTTP("tcp", "127.0.0.1:"+portStr)
-	if err != nil {
+	gtime.Start("main.BeforeUI")
+	client := server.NewClient()
+	if client.TryConnect() {
+		gtime.End("main.BeforeUI")
+		if err := client.PlayAudio(audioFile); err != nil {
+			log.Fatal("error playing audio:", err)
+		}
+	} else {
 		// fail, so setup server.
 		u := ui.New()
-		rpcServer := &RpcServer{u: u}
-		if err := rpc.Register(rpcServer); err != nil {
-			log.Fatal("error registering rpc:", err)
+		s := server.New(u)
+		if err := s.Start(); err != nil {
+			log.Fatal("error starting server:", err)
 		}
-		// start server
-		go (func() {
-			go rpc.HandleHTTP()
-			l, err := net.Listen("tcp", "127.0.0.1:"+portStr)
-			if err != nil {
-				log.Fatal("listen error:", err)
-			}
-			if err := http.Serve(l, nil); err != nil {
-				log.Fatal("error serving:", err)
-			}
-		})()
+		// do this on server only (so two processes aren't trying to clear cache at once)
+		go visu.ClearCache()
 
+		gtime.End("main.BeforeUI") // under 1ms
 		u.Run(audioFile)
-	} else {
-		var reply int
-		if err := client.Call("RpcServer.PlayAudio", &audioFile, &reply); err != nil {
-			log.Fatal("error calling rpc:", err)
-		}
-		log.Println("reply is", reply)
 	}
 }

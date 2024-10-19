@@ -1,6 +1,7 @@
 package audio
 
 import (
+	"audio-player/gtime"
 	"github.com/google/uuid"
 	"log"
 	"os"
@@ -16,7 +17,8 @@ type Audio struct {
 	procId  string
 	procMux sync.Mutex
 
-	dur float32
+	dur    float32
+	durMux sync.Mutex
 }
 
 func New(path string) *Audio {
@@ -33,9 +35,15 @@ func (a *Audio) Stop() {
 }
 
 func (a *Audio) Duration() float32 {
+	a.durMux.Lock()
+	defer a.durMux.Unlock()
+
 	if a.dur != 0 {
 		return a.dur
 	}
+
+	gtime.Start("ffprobe")
+	defer gtime.End("ffprobe")
 
 	cmd := exec.Command("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", a.path)
 	out, err := cmd.Output()
