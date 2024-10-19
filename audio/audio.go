@@ -2,6 +2,7 @@ package audio
 
 import (
 	"audio-player/gtime"
+	"bytes"
 	"github.com/google/uuid"
 	"log"
 	"os"
@@ -19,6 +20,10 @@ type Audio struct {
 
 	dur    float32
 	durMux sync.Mutex
+
+	peak    float32
+	peakSet bool
+	peakMux sync.Mutex
 }
 
 func New(path string) *Audio {
@@ -32,6 +37,63 @@ func (a *Audio) Stop() {
 		a.proc = nil
 	}
 	a.procMux.Unlock()
+}
+
+func parseMaxVolume(s string) float32 {
+	// string will look like:
+	// [Parsed_volumedetect_0 @ 0x76acac004700] max_volume: -13.5 dB
+	// we want to extract the -13.5
+	mv := "max_volume: "
+	sp := strings.Index(s, mv)
+	if sp == -1 {
+		log.Println("error parsing max volume:", s)
+		return 0
+	}
+	sp += len(mv)
+
+	dbStrIdx := strings.Index(s[sp:], " dB")
+	if dbStrIdx == -1 {
+		log.Println("error parsing max volume:", s)
+		return 0
+	}
+	dbStrIdx += sp
+
+	peak, err := strconv.ParseFloat(s[sp:dbStrIdx], 32)
+	if err != nil {
+		log.Println("error parsing max volume:", s, err)
+		return 0
+	}
+	return float32(peak)
+}
+
+func (a *Audio) Peak() float32 {
+	a.peakMux.Lock()
+	defer a.peakMux.Unlock()
+
+	if a.peakSet {
+		return a.peak
+	}
+	// ffmpeg -i video.avi -af "volumedetect" -vn -sn -dn -f null /dev/null
+	cmd := exec.Command("ffmpeg", "-i", a.path, "-hide_banner", "-loglevel", "info", "-af", "volumedetect", "-vn", "-sn", "-dn", "-f", "null", "/dev/null")
+	buf := &bytes.Buffer{}
+	cmd.Stderr = buf
+	cmd.Stdout = buf
+	err := cmd.Run()
+	if err != nil {
+		log.Println("error getting peak:", err)
+	}
+	str := buf.String()
+	for _, str := range strings.Split(str, "\n") {
+		if strings.Contains(str, "max_volume") {
+			a.peak = parseMaxVolume(str)
+			a.peakSet = true
+			return a.peak
+		}
+	}
+
+	log.Println("error getting peak: no max_volume found in", str)
+
+	return 0
 }
 
 func (a *Audio) Duration() float32 {
@@ -64,8 +126,13 @@ func (a *Audio) Duration() float32 {
 
 func (a *Audio) Start(positionSeconds float64) error {
 	a.Stop()
+	peak := a.Peak()
+	increase := float32(0)
+	if peak < 0 {
+		increase = -peak
+	}
 
-	cmd := exec.Command("ffplay", "-nodisp", "-autoexit", "-ss", strconv.FormatFloat(positionSeconds, 'f', -1, 64), a.path)
+	cmd := exec.Command("ffplay", "-nodisp", "-autoexit", "-ss", strconv.FormatFloat(positionSeconds, 'f', -1, 64), "-af", "volume="+strconv.FormatFloat(float64(increase), 'f', -1, 32)+"dB", a.path)
 	err := cmd.Start()
 	if err != nil {
 		return err
