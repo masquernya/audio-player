@@ -37,8 +37,7 @@ func (s *Shared) isPortInUse(p int) bool {
 }
 
 func (s *Shared) getFreePort() int {
-	start := 19837
-	for port := start; port < start+100; port++ {
+	for port := DefaultPort; port < DefaultPort+100; port++ {
 		if !s.isPortInUse(port) {
 			return port
 		}
