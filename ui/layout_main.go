@@ -11,7 +11,7 @@ const minImageHeight = 100
 const buttonHeight = 30
 const buttonPadding = 10
 
-const usedHeightForButtons = (buttonHeight * 2) + (buttonPadding * 2)
+const usedHeightForButton = buttonHeight + buttonPadding
 
 // LayoutMain is a fyne layout where the first component is full width and min 100px height, the second component is full width and 20px height, and the third is the cursor.
 type LayoutMain struct {
@@ -20,6 +20,15 @@ type LayoutMain struct {
 	playState    int
 	playStateMux sync.Mutex
 	width        float32
+}
+
+func (l *LayoutMain) Pause(cursor fyne.CanvasObject) {
+	l.playStateMux.Lock()
+	l.playState = l.playState + 1
+	l.playStateMux.Unlock()
+
+	cursorPosition := float32(float32(l.width) * l.PlaybackPercent)
+	cursor.Move(fyne.NewPos(cursorPosition, 2))
 }
 
 func (l *LayoutMain) Play(cursor fyne.CanvasObject, pos float32, dur float32) {
@@ -55,8 +64,12 @@ func (l *LayoutMain) Play(cursor fyne.CanvasObject, pos float32, dur float32) {
 
 }
 
+func (l *LayoutMain) getButtonHeight(objects []fyne.CanvasObject) float32 {
+	return usedHeightForButton*float32(len(objects)-3) + buttonPadding
+}
+
 func (l *LayoutMain) MinSize(objects []fyne.CanvasObject) fyne.Size {
-	return fyne.NewSize(400, minImageHeight+usedHeightForButtons)
+	return fyne.NewSize(400, minImageHeight+l.getButtonHeight(objects))
 }
 
 func (l *LayoutMain) Layout(objects []fyne.CanvasObject, size fyne.Size) {
@@ -67,9 +80,10 @@ func (l *LayoutMain) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 
 	image := objects[0]
 	clicker := objects[1]
-	button := objects[2]
-	closeButton := objects[3]
-	cursor := objects[4]
+	cursor := objects[2]
+
+	buttons := objects[3:]
+	usedHeightForButtons := l.getButtonHeight(objects)
 
 	imageHeight := size.Height - usedHeightForButtons
 
@@ -82,15 +96,17 @@ func (l *LayoutMain) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 
 	// buttons
 	y := imageHeight + buttonPadding
-	button.Resize(fyne.NewSize(size.Width, buttonHeight))
-	button.Move(fyne.NewPos(0, y))
+	for _, btn := range buttons {
+		btn.Resize(fyne.NewSize(size.Width, buttonHeight))
+		btn.Move(fyne.NewPos(0, y))
 
-	y += buttonHeight + buttonPadding
+		y += buttonHeight + buttonPadding
 
-	closeButton.Resize(fyne.NewSize(size.Width, buttonHeight))
-	closeButton.Move(fyne.NewPos(0, y))
+		//closeButton.Resize(fyne.NewSize(size.Width, buttonHeight))
+		//closeButton.Move(fyne.NewPos(0, y))
+	}
 
-	y += buttonHeight
+	//y += buttonHeight
 
 	//cursorPosition := float32(float32(size.Width) * l.PlaybackPercent)
 	//log.Println("render with pos", cursorPosition)
