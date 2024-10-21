@@ -94,6 +94,9 @@ func (u *UI) Run(audioFile string) error {
 		canvasImg.Refresh()
 	})()
 
+	pausePosition := float32(0)
+	var pauseButton *widget.Button
+
 	//image := canvas.NewImageFromReader(bytes.NewReader(imageBits), "waveform_"+u.audioFile)
 	cursorPositioner := NewClickableInvisible(func(event *fyne.PointEvent) {
 		// translate to duration
@@ -101,15 +104,22 @@ func (u *UI) Run(audioFile string) error {
 		pos := u.a.Duration() * percent
 		log.Println("seeking to", pos)
 
-		playAudioSync(u.a, l, cursor, pos, u.a.Duration())
+		if pausePosition != 0 {
+			pausePosition = pos
+			l.PlaybackPercent = percent
+			l.Pause(cursor)
+		} else {
+			playAudioSync(u.a, l, cursor, pos, u.a.Duration())
+		}
 	})
 
 	replayButton := widget.NewButton("Replay", func() {
+		// reset pause position/label
+		pausePosition = 0
+		pauseButton.SetText("Pause")
 		playAudioSync(u.a, l, cursor, 0, u.a.Duration())
 	})
 
-	pausePosition := float32(0)
-	var pauseButton *widget.Button
 	pauseButton = widget.NewButton("Pause", func() {
 		if pausePosition == 0 {
 			pauseAudioSync(u.a, l, cursor)
