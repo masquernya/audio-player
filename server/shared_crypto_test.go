@@ -1,17 +1,29 @@
 package server
 
-import "testing"
+import (
+	"log"
+	"testing"
+)
 
-func TestEncryptDecrypt(t *testing.T) {
+func Test_createKeyPair(t *testing.T) {
 	s := newShared()
-	b := []byte("hello")
+	key, cert := s.createKeyPair("client")
+	if len(key) == 0 {
+		t.Error("key is empty")
+	}
+	if len(cert) == 0 {
+		t.Error("cert is empty")
+	}
 
-	encrypted := s.Encrypt(b)
-	decrypted, err := s.Decrypt(encrypted)
-	if err != nil {
-		t.Fatal("error decrypting:", err)
+	t.Log("cert:", cert)
+	t.Log("key:", key)
+}
+
+func TestShared_GetKeyPair(t *testing.T) {
+	s := newShared()
+	cert := s.GetKeyPair(KeyPairModeClient)
+	if cert == nil {
+		t.Error("cert is nil")
 	}
-	if string(decrypted) != "hello" {
-		t.Fatal("decrypted message is not the same as original message")
-	}
+	log.Println("cert:", cert)
 }

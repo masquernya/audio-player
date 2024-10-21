@@ -8,10 +8,12 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 type Shared struct {
+	certMux sync.Mutex
 }
 
 func newShared() *Shared {

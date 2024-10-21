@@ -2,13 +2,10 @@ package server
 
 import (
 	"audio-player/ui"
-	crypto_rand "crypto/rand"
-	"encoding/hex"
-	"encoding/json"
+	"crypto/tls"
 	"log"
 	"net/rpc"
 	"strconv"
-	"time"
 )
 
 type Client struct {
@@ -26,10 +23,28 @@ func NewClient() *Client {
 }
 
 func (c *Client) TryConnect() bool {
-	client, err := rpc.DialHTTP("tcp", "127.0.0.1:"+strconv.Itoa(c.s.GetPort()))
+	config := tls.Config{
+		GetClientCertificate: func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			cl := c.s.GetKeyPair(KeyPairModeClient)
+			return &cl, nil
+		},
+		VerifyPeerCertificate: c.s.verifyCert(func() tls.Certificate {
+			return c.s.GetKeyPair(KeyPairModeServer)
+		}),
+		InsecureSkipVerify: true, // still calls VerifyPeerCertificate (which is all we need)
+	}
+	conn, err := tls.Dial("tcp", "127.0.0.1:"+strconv.Itoa(c.s.GetPort()), &config)
 	if err != nil {
+		log.Println("error dialing:", err)
 		return false
 	}
+	//defer conn.Close()
+	//log.Println("client: connected to: ", conn.RemoteAddr())
+	client := rpc.NewClient(conn)
+	//client, err := rpc.DialHTTP("tcp", "127.0.0.1:"+strconv.Itoa(c.s.GetPort()))
+	//if err != nil {
+	//	return false
+	//}
 
 	c.client = client
 
@@ -37,24 +52,8 @@ func (c *Client) TryConnect() bool {
 }
 
 func (c *Client) PlayAudio(audioFilePath string) error {
-	nonce := make([]byte, 32)
-	if _, err := crypto_rand.Read(nonce); err != nil {
-		log.Fatal("error generating nonce:", err)
-	}
-
-	request := &PlayAudioRequest{
-		AudioFilePath: audioFilePath,
-		CreatedAt:     time.Now().Format(time.RFC3339),
-		Nonce:         hex.EncodeToString(nonce),
-	}
-	bits, err := json.Marshal(request)
-	if err != nil {
-		log.Fatal("error marshalling request:", err)
-	}
-
-	requestStr := hex.EncodeToString(c.s.Encrypt(bits))
 	var reply int
-	if err := c.client.Call("RpcServer.PlayAudio", &requestStr, &reply); err != nil {
+	if err := c.client.Call("RpcServer.PlayAudio", audioFilePath, &reply); err != nil {
 		log.Fatal("error calling rpc:", err)
 	}
 	return nil
