@@ -2,7 +2,9 @@ package ui
 
 import (
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/widget"
 	"log"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -20,22 +22,47 @@ type LayoutMain struct {
 	playState    int
 	playStateMux sync.Mutex
 	width        float32
+	duration     float32
 }
 
-func (l *LayoutMain) Pause(cursor fyne.CanvasObject) {
+func (l *LayoutMain) Pause(cursor fyne.CanvasObject, label *widget.Label, pos float32, dur float32) {
 	l.playStateMux.Lock()
 	l.playState = l.playState + 1
+	l.PlaybackPercent = pos / dur
 	l.playStateMux.Unlock()
 
 	cursorPosition := float32(float32(l.width) * l.PlaybackPercent)
 	cursor.Move(fyne.NewPos(cursorPosition, 2))
+	label.SetText(l.formatDuration(pos) + " / " + l.formatDuration(dur))
 }
 
-func (l *LayoutMain) Play(cursor fyne.CanvasObject, pos float32, dur float32) {
+func (l *LayoutMain) formatDuration(duration float32) string {
+	if duration <= 0 {
+		return "0:00:00"
+	}
+	minute := int(duration / 60)
+	second := int(duration) % 60
+	ms := int((duration - float32(int(duration))) * 100)
+
+	minuteStr := strconv.Itoa(minute)
+	secondStr := strconv.Itoa(second)
+	msStr := strconv.Itoa(ms)
+	if len(secondStr) == 1 {
+		secondStr = "0" + secondStr
+	}
+	if len(msStr) == 1 {
+		msStr = "0" + msStr
+	}
+	return minuteStr + ":" + secondStr + ":" + msStr
+}
+
+func (l *LayoutMain) Play(cursor fyne.CanvasObject, label *widget.Label, pos float32, dur float32) {
 	l.playStateMux.Lock()
 	l.playState++
 	expect := l.playState
 	l.playStateMux.Unlock()
+
+	durationStr := l.formatDuration(dur)
 
 	go (func() {
 		for pos <= dur {
@@ -50,10 +77,11 @@ func (l *LayoutMain) Play(cursor fyne.CanvasObject, pos float32, dur float32) {
 			l.playStateMux.Unlock()
 
 			pos += 0.01
-			//c.Refresh()
 
 			cursorPosition := float32(float32(l.width) * l.PlaybackPercent)
 			cursor.Move(fyne.NewPos(cursorPosition, 2))
+
+			label.SetText(l.formatDuration(pos) + " / " + durationStr)
 
 			renderDur := time.Since(s)
 
@@ -75,7 +103,7 @@ func (l *LayoutMain) MinSize(objects []fyne.CanvasObject) fyne.Size {
 func (l *LayoutMain) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 	l.width = size.Width // kinda hacky
 	if len(objects) < 5 {
-		panic("LayoutMain must have 3 objects (image, imageClicker, replayButton, closeButton, cursor)")
+		panic("LayoutMain must have at least 5 objects")
 	}
 
 	image := objects[0]
@@ -108,9 +136,8 @@ func (l *LayoutMain) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 
 	//y += buttonHeight
 
-	//cursorPosition := float32(float32(size.Width) * l.PlaybackPercent)
-	//log.Println("render with pos", cursorPosition)
+	cursorPosition := float32(float32(size.Width) * l.PlaybackPercent)
 	cursorHeight := size.Height - usedHeightForButtons
 	cursor.Resize(fyne.NewSize(1, cursorHeight))
-	//cursor.Move(fyne.NewPos(cursorPosition, 0))
+	cursor.Move(fyne.NewPos(cursorPosition, 2))
 }
