@@ -96,7 +96,6 @@ func (u *UI) Run(audioFile string) error {
 
 	//image := canvas.NewImageFromReader(bytes.NewReader(imageBits), "waveform_"+u.audioFile)
 	cursorPositioner := NewClickableInvisible(func(event *fyne.PointEvent) {
-		log.Println("clicked at", event.Position)
 		// translate to duration
 		percent := event.Position.X / float32(canvasImg.Size().Width)
 		pos := u.a.Duration() * percent
