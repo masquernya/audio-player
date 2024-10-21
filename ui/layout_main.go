@@ -33,7 +33,7 @@ func (l *LayoutMain) Pause(cursor fyne.CanvasObject) {
 
 func (l *LayoutMain) Play(cursor fyne.CanvasObject, pos float32, dur float32) {
 	l.playStateMux.Lock()
-	l.playState = l.playState + 1
+	l.playState++
 	expect := l.playState
 	l.playStateMux.Unlock()
 
