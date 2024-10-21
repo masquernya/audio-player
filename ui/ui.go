@@ -24,17 +24,17 @@ type UI struct {
 	app fyne.App
 }
 
-func playAudioSync(a *audio.Audio, s *LayoutMain, bar fyne.CanvasObject, pos float32, dur float32) {
+func playAudioSync(a *audio.Audio, s *LayoutMain, bar fyne.CanvasObject, label *widget.Label, pos float32, dur float32) {
 	// setup cursor render
-	s.Play(bar, pos, dur)
+	s.Play(bar, label, pos, dur)
 	// play
 	if err := a.Start(float64(pos)); err != nil {
 		log.Println("error starting audio:", err)
 	}
 }
 
-func pauseAudioSync(a *audio.Audio, s *LayoutMain, bar fyne.CanvasObject) float32 {
-	s.Pause(bar)
+func pauseAudioSync(a *audio.Audio, s *LayoutMain, bar fyne.CanvasObject, label *widget.Label, pos float32, dur float32) float32 {
+	s.Pause(bar, label, pos, dur)
 	a.Stop()
 	return s.PlaybackPercent
 }
@@ -76,6 +76,9 @@ func (u *UI) Run(audioFile string) error {
 	cursor := canvas.NewRectangle(color.White)
 	imageWidth, imageHeight := visu.GetSize()
 
+	label := widget.NewLabel("0:00:00 / 0:00:00")
+	label.Alignment = fyne.TextAlignCenter
+
 	// TODO: would be nice if placeholder was a bit more fancy (loading animation? placeholder wave form?)
 	placeholderImage := image.NewAlpha(image.Rect(0, 0, imageWidth, imageHeight))
 	canvasImg := canvas.NewImageFromImage(placeholderImage)
@@ -107,9 +110,9 @@ func (u *UI) Run(audioFile string) error {
 		if pausePosition != 0 {
 			pausePosition = pos
 			l.PlaybackPercent = percent
-			l.Pause(cursor)
+			l.Pause(cursor, label, pos, u.a.Duration())
 		} else {
-			playAudioSync(u.a, l, cursor, pos, u.a.Duration())
+			playAudioSync(u.a, l, cursor, label, pos, u.a.Duration())
 		}
 	})
 
@@ -117,16 +120,16 @@ func (u *UI) Run(audioFile string) error {
 		// reset pause position/label
 		pausePosition = 0
 		pauseButton.SetText("Pause")
-		playAudioSync(u.a, l, cursor, 0, u.a.Duration())
+		playAudioSync(u.a, l, cursor, label, 0, u.a.Duration())
 	})
 
 	pauseButton = widget.NewButton("Pause", func() {
 		if pausePosition == 0 {
-			pauseAudioSync(u.a, l, cursor)
+			pauseAudioSync(u.a, l, cursor, label, l.PlaybackPercent*u.a.Duration(), u.a.Duration())
 			pausePosition = l.PlaybackPercent * u.a.Duration()
 			pauseButton.SetText("Resume")
 		} else {
-			playAudioSync(u.a, l, cursor, pausePosition, u.a.Duration())
+			playAudioSync(u.a, l, cursor, label, pausePosition, u.a.Duration())
 			pausePosition = 0
 			pauseButton.SetText("Pause")
 		}
@@ -137,13 +140,13 @@ func (u *UI) Run(audioFile string) error {
 		u.app.Quit()
 	})
 
-	ct = container.New(l, canvasImg, cursorPositioner, cursor, replayButton, pauseButton, closeButton)
+	ct = container.New(l, canvasImg, cursorPositioner, cursor, label, replayButton, pauseButton, closeButton)
 
 	gtime.End("ui.Run.CreateElements") // 1ms
 
 	go (func() {
 		// u.a.Duration() is called before goroutine is created, so we can't just do "go playAudioSync(...)"
-		playAudioSync(u.a, l, cursor, 0, u.a.Duration())
+		playAudioSync(u.a, l, cursor, label, 0, u.a.Duration())
 	})()
 
 	u.w.SetContent(ct)
