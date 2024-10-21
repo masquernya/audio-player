@@ -13,3 +13,7 @@ Basic linux audio player that values launch speed and displaying a visualization
   - They all seem to value playlists for some reason (e.g. Sayonara auto loops if there's only one song being played (and I can't seem to turn that off), Elisa resumes the previous song rather than playing the selected file, Rhythmbox scans your disk and insists on playing a new song after playing a file)
 - **CLI** (e.g. `ffplay`)
   - Faster/more reliable, but doesn't have a UI or visualization.
+
+## runtime dependencies
+
+- `ffmpeg`, `ffprobe`, and `ffplay` (ffplay and ffprobe are usually included with ffmpeg)
