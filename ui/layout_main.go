@@ -57,6 +57,7 @@ func (l *LayoutMain) formatDuration(duration float32) string {
 }
 
 func (l *LayoutMain) Play(cursor fyne.CanvasObject, label *widget.Label, pos float32, dur float32) {
+	playStart := time.Now()
 	l.playStateMux.Lock()
 	l.playState++
 	expect := l.playState
@@ -65,8 +66,8 @@ func (l *LayoutMain) Play(cursor fyne.CanvasObject, label *widget.Label, pos flo
 	durationStr := l.formatDuration(dur)
 
 	go (func() {
+		origPos := pos
 		for pos <= dur {
-			s := time.Now()
 			l.playStateMux.Lock()
 			if l.playState != expect {
 				l.playStateMux.Unlock()
@@ -74,18 +75,17 @@ func (l *LayoutMain) Play(cursor fyne.CanvasObject, label *widget.Label, pos flo
 				return
 			}
 			l.PlaybackPercent = pos / dur
+			percent := l.PlaybackPercent
 			l.playStateMux.Unlock()
 
-			pos += 0.01
+			amountToAdd := float32(time.Since(playStart).Milliseconds()) / 1000
+			pos = origPos + amountToAdd
 
-			cursorPosition := float32(float32(l.width) * l.PlaybackPercent)
+			cursorPosition := float32(float32(l.width) * percent)
 			cursor.Move(fyne.NewPos(cursorPosition, 2))
-
 			label.SetText(l.formatDuration(pos) + " / " + durationStr)
 
-			renderDur := time.Since(s)
-
-			time.Sleep(time.Millisecond*10 - renderDur)
+			time.Sleep(time.Millisecond * 10)
 		}
 		log.Println("LayoutMain playback finished")
 	})()
