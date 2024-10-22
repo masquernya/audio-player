@@ -25,12 +25,12 @@ type UI struct {
 }
 
 func playAudioSync(a *audio.Audio, s *LayoutMain, bar fyne.CanvasObject, label *widget.Label, pos float32, dur float32) {
-	// setup cursor render
-	s.Play(bar, label, pos, dur)
 	// play
 	if err := a.Start(float64(pos)); err != nil {
 		log.Println("error starting audio:", err)
 	}
+	// setup cursor render
+	s.Play(bar, label, pos, dur)
 }
 
 func pauseAudioSync(a *audio.Audio, s *LayoutMain, bar fyne.CanvasObject, label *widget.Label, pos float32, dur float32) float32 {
