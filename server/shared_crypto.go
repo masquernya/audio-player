@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"path"
 	"strconv"
 	"time"
 )
@@ -78,8 +79,8 @@ func (s *Shared) GetKeyPair(mode KeyPairMode) tls.Certificate {
 		modeStr = "server"
 	}
 
-	expectedCertPath := modeStr + ".crt"
-	expectedKeyPath := modeStr + ".key"
+	expectedCertPath := path.Join(path.Dir(os.Args[0]), modeStr+".crt")
+	expectedKeyPath := path.Join(path.Dir(os.Args[0]), modeStr+".key")
 
 	doCreate := false
 
